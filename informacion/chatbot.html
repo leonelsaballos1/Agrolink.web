@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agrolink Chatbot</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background-color: #f0f4f8;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    #chat-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+
+    .message {
+      margin: 8px 0;
+      padding: 10px 15px;
+      border-radius: 8px;
+      max-width: 80%;
+      line-height: 1.4;
+      word-wrap: break-word;
+    }
+
+    .user {
+      background-color: #e8f5e9;
+      border-left: 4px solid #2f855a;
+      align-self: flex-end;
+    }
+
+    .bot {
+      background-color: #fff;
+      border-left: 4px solid #8d6e63;
+      align-self: flex-start;
+    }
+
+    #input-area {
+      display: flex;
+      padding: 10px;
+      border-top: 1px solid #ccc;
+      background-color: #fff;
+      align-items: flex-end;
+    }
+
+    #input {
+      flex: 1;
+      border: 1px solid #ccc;
+      border-radius: 25px;
+      padding: 10px 15px;
+      resize: none;
+      font-size: 15px;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+
+    button {
+      border: none;
+      border-radius: 25px;
+      padding: 10px 15px;
+      margin-left: 5px;
+      background-color: #2f855a;
+      color: white;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    button.recording {
+      background-color: red;
+    }
+
+    #clear-history {
+      text-align: center;
+      color: red;
+      margin: 10px 0;
+      cursor: pointer;
+    }
+
+    #loading {
+      text-align: center;
+      color: #2f855a;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="chat-container">
+    <div id="messages"></div>
+
+    <div id="loading" style="display:none;">Cargando respuesta...</div>
+
+    <div id="input-area">
+      <textarea id="input" placeholder="Escriba su mensaje..." rows="1"></textarea>
+      <button id="mic-btn">🎤</button>
+      <button id="send-btn">📩</button>
+    </div>
+
+    <div id="clear-history">🗑️ Limpiar historial</div>
+  </div>
+
+  <script>
+    const messagesDiv = document.getElementById("messages");
+    const input = document.getElementById("input");
+    const sendBtn = document.getElementById("send-btn");
+    const micBtn = document.getElementById("mic-btn");
+    const clearBtn = document.getElementById("clear-history");
+    const loadingDiv = document.getElementById("loading");
+
+    let isRecording = false;
+    let recognition;
+
+    // 🧠 Cargar historial
+    let messages = JSON.parse(localStorage.getItem("chatHistory")) || [
+      {
+        sender: "bot",
+        text: "¡Bienvenido! Soy Agrolink, su asistente especializado en agricultura nicaragüense. Puede preguntarme sobre técnicas de siembra, control de plagas, fertilización y más."
+      }
+    ];
+    renderMessages();
+
+    // 🗣️ Configurar reconocimiento de voz
+    if ("webkitSpeechRecognition" in window) {
+      recognition = new webkitSpeechRecognition();
+      recognition.lang = "es-NI";
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        input.value = text;
+        stopRecording();
+      };
+
+      recognition.onerror = () => stopRecording();
+    } else {
+      alert("Tu navegador no soporta reconocimiento de voz.");
+    }
+
+    micBtn.onclick = () => {
+      if (!isRecording) startRecording();
+      else stopRecording();
+    };
+
+    function startRecording() {
+      if (recognition) {
+        isRecording = true;
+        micBtn.classList.add("recording");
+        recognition.start();
+      }
+    }
+
+    function stopRecording() {
+      if (recognition) {
+        isRecording = false;
+        micBtn.classList.remove("recording");
+        recognition.stop();
+      }
+    }
+
+    // 📤 Enviar mensaje
+    sendBtn.onclick = handleSend;
+    input.addEventListener("keypress", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    });
+
+    async function handleSend() {
+      const text = input.value.trim();
+      if (!text) return;
+
+      addMessage("user", text);
+      input.value = "";
+      saveHistory();
+      loadingDiv.style.display = "block";
+
+      try {
+        const payload = {
+          inputText: text,
+          geographicContext: "Nicaragua, zonas rurales",
+          history: [],
+          system_prompt:
+            "Eres un asistente de agricultura experto y muy detallado. Tu única función es responder preguntas sobre agricultura en Nicaragua. Proporciona respuestas completas, bien explicadas y, si es posible, en formato de lista o paso a paso para que sean más fáciles de entender. No abrevies las respuestas. Si la pregunta no está relacionada con la agricultura, debes responder: 'Por el momento, solo puedo responder preguntas sobre agricultura.'"
+        };
+
+        const res = await fetch(
+          "https://magicloops.dev/api/loop/ce14139b-b7b8-4bf5-929b-4b102759ec68/run",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          }
+        );
+
+        const data = await res.json();
+        let botText = data.responseText || "Lo siento, no obtuve respuesta.";
+        botText = botText.replace(/[\*\/]/g, "");
+        addMessage("bot", botText);
+        speak(botText);
+      } catch (err) {
+        console.error(err);
+        addMessage("bot", "Error de conexión. Intente de nuevo.");
+      } finally {
+        loadingDiv.style.display = "none";
+        saveHistory();
+      }
+    }
+
+    // 💬 Mostrar mensajes
+    function addMessage(sender, text) {
+      messages.push({ sender, text });
+      renderMessages();
+    }
+
+    function renderMessages() {
+      messagesDiv.innerHTML = "";
+      messages.forEach((msg) => {
+        const div = document.createElement("div");
+        div.className = "message " + (msg.sender === "user" ? "user" : "bot");
+        div.textContent = msg.text;
+        messagesDiv.appendChild(div);
+      });
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      saveHistory();
+    }
+
+    // 🔊 Hablar texto
+    function speak(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "es-NI";
+      utterance.rate = 1;
+      speechSynthesis.speak(utterance);
+    }
+
+    // 💾 Guardar historial
+    function saveHistory() {
+      localStorage.setItem("chatHistory", JSON.stringify(messages));
+    }
+
+    // 🧹 Limpiar historial
+    clearBtn.onclick = () => {
+      if (confirm("¿Borrar todo el historial?")) {
+        localStorage.removeItem("chatHistory");
+        messages = [
+          {
+            sender: "bot",
+            text: "¡Bienvenido! Soy Agrolink, su asistente especializado en agricultura nicaragüense. Puede preguntarme sobre técnicas de siembra, control de plagas, fertilización y más."
+          }
+        ];
+        renderMessages();
+      }
+    };
+  </script>
+</body>
+</html>

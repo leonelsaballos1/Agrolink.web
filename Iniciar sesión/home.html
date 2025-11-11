@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h2>hola <span id="msg"></span> </h2>
+
+
+    <button type="button" id="btnSignout">signout</button>
+</body>
+
+<script>
+    let UserCredential = JSON.parse(sessionStorage.getItem("user-credential"));
+    let UserInfo = JSON.parse(sessionStorage.getItem("info-user"));
+
+    let mensaje = document.getElementById('msg');
+    let buttonSignout = document.getElementById('btnSignout');
+    
+    mensaje.innerText = `${UserInfo.firstname}`;
+
+    const signout = () => {
+        sessionStorage.removeItem('user-credential');
+        sessionStorage.removeItem('user-info');
+        window.location.href = 'panel_agricola.html';
+    };
+
+    const revisarCredenciales = () => {
+        if (!sessionStorage.getItem('user-credential')) {
+            window.location.href = 'panel_agricola.html';
+        }
+    };
+
+    window.addEventListener('load', revisarCredenciales);
+    buttonSignout.addEventListener('click', signout);
+</script>
+</html>

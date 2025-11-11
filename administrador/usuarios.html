@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel de Usuarios - Agrolink</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      addDoc,
+      deleteDoc,
+      updateDoc,
+      doc
+    } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+    // --- Configuración de Firebase ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyCgRip-vOzkAVB9l4w-hoIZcm_zr3mAGaw",
+      authDomain: "agriges-432cb.firebaseapp.com",
+      databaseURL: "https://agriges-432cb-default-rtdb.firebaseio.com",
+      projectId: "agriges-432cb",
+      storageBucket: "agriges-432cb.firebasestorage.app",
+      messagingSenderId: "397829479377",
+      appId: "1:397829479377:web:7a0b3181be45b603fb9ef0",
+      measurementId: "G-XQ5BDMQ5GG"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let chartInstance = null;
+
+    // 🔹 Cargar datos
+    async function cargarDatos() {
+      const querySnapshot = await getDocs(collection(db, "usuarios"));
+      const datos = [];
+      querySnapshot.forEach((docSnap) => {
+        datos.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      mostrarGrafica(datos);
+      mostrarTabla(datos);
+    }
+
+    // 🔹 Agregar nuevo usuario
+    async function agregarUsuario(event) {
+      event.preventDefault();
+      const nombre = document.getElementById("nombre").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      if (!nombre || !email || !password) {
+        alert("Por favor, completa todos los campos.");
+        return;
+      }
+
+      try {
+        await addDoc(collection(db, "usuarios"), {
+          nombre,
+          email,
+          password,
+          blocked: false,
+          denied: false,
+          createdAt: new Date().toISOString(),
+        });
+        alert("✅ Usuario agregado correctamente");
+        document.getElementById("formAgregar").reset();
+        cargarDatos();
+      } catch (error) {
+        console.error("Error agregando usuario:", error);
+        alert("❌ Error al agregar usuario.");
+      }
+    }
+
+    // 🔹 Mostrar gráfica con colores distintos
+    function mostrarGrafica(datos) {
+      const ctx = document.getElementById("grafica").getContext("2d");
+
+      const labels = datos.map(u => u.nombre || "Sin nombre");
+
+      const colores = [
+        "#4CAF50","#FF9800","#2196F3","#E91E63","#9C27B0",
+        "#00BCD4","#FFC107","#795548","#607D8B","#F44336"
+      ];
+
+      const backgroundColors = datos.map((_, i) => colores[i % colores.length]);
+
+      if (chartInstance) chartInstance.destroy();
+
+      chartInstance = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            label: "Usuarios",
+            data: datos.map((_, i) => i + 1),
+            backgroundColor: backgroundColors
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: { display: true, text: "Usuarios registrados" },
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    // 🔹 Mostrar tabla de usuarios
+    function mostrarTabla(datos) {
+      const tabla = document.getElementById("tabla");
+      tabla.innerHTML = "";
+
+      if (datos.length === 0) {
+        tabla.innerHTML = "<p style='text-align:center;color:#555'>No hay usuarios registrados.</p>";
+        return;
+      }
+
+      datos.forEach((u, i) => {
+        const div = document.createElement("div");
+        div.classList.add("item");
+        const estado = u.blocked ? "Bloqueado" : (u.denied ? "Acceso denegado" : "Activo");
+
+        div.innerHTML = `
+          <div class="row">
+            <div class="info">
+              <p><strong>#${i + 1} - ${u.nombre || "Sin nombre"}</strong> <span class="small">(${estado})</span></p>
+              <p><b>Email:</b> ${u.email || "—"}</p>
+              <p><b>Contraseña:</b> ${u.password ? "********" : "No establecida"}</p>
+              ${u.createdAt ? `<p><b>Creado:</b> ${new Date(u.createdAt).toLocaleString()}</p>` : ""}
+            </div>
+            <div class="actions">
+              <button class="btn delete" data-id="${u.id}">🗑 Eliminar</button>
+              <button class="btn block" data-id="${u.id}">${u.blocked ? "🔓 Desbloquear" : "🔒 Bloquear"}</button>
+              <button class="btn deny" data-id="${u.id}">${u.denied ? "✅ Permitir" : "🚫 Negar acceso"}</button>
+            </div>
+          </div>
+          <hr>
+        `;
+        tabla.appendChild(div);
+      });
+
+      document.querySelectorAll(".btn.delete").forEach(b =>
+        b.addEventListener("click", () => eliminarUsuario(b.dataset.id))
+      );
+
+      document.querySelectorAll(".btn.block").forEach(b =>
+        b.addEventListener("click", () => toggleBloqueo(b.dataset.id, b.textContent.includes("Desbloquear")))
+      );
+
+      document.querySelectorAll(".btn.deny").forEach(b =>
+        b.addEventListener("click", () => toggleDenegacion(b.dataset.id, b.textContent.includes("Permitir")))
+      );
+    }
+
+    // 🔹 Funciones de control
+    async function eliminarUsuario(id) {
+      if (!confirm("¿Seguro que deseas eliminar este usuario?")) return;
+      await deleteDoc(doc(db, "usuarios", id));
+      alert("Usuario eliminado correctamente.");
+      cargarDatos();
+    }
+
+    async function toggleBloqueo(id, desbloquear) {
+      await updateDoc(doc(db, "usuarios", id), { blocked: !desbloquear });
+      alert(desbloquear ? "Usuario desbloqueado." : "Usuario bloqueado.");
+      cargarDatos();
+    }
+
+    async function toggleDenegacion(id, permitir) {
+      await updateDoc(doc(db, "usuarios", id), { denied: !permitir });
+      alert(permitir ? "Acceso permitido." : "Acceso negado.");
+      cargarDatos();
+    }
+
+    window.addEventListener("load", cargarDatos);
+    window.agregarUsuario = agregarUsuario;
+  </script>
+
+ <style>
+  /* 🔹 Estilos generales */
+  body {
+    font-family: "Segoe UI";
+    background: #fff;
+    color: #111;
+    padding: 20px;
+  }
+
+  /* 🔹 Título principal */
+  h1 {
+    color: #4CAF50;
+    text-align: center;
+  }
+
+  /* 🔹 Gráficos */
+  canvas {
+    display: block;
+    margin: 0 auto 20px;
+    background: #f9f9f9;
+    padding: 15px;
+    border-radius: 12px;
+    max-width: 700px;
+  }
+
+  /* 🔹 Formulario para agregar usuarios */
+  #formAgregar {
+    max-width: 700px;
+    margin: 20px auto;
+    background: #f2f2f2;
+    padding: 20px;
+    border-radius: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  #formAgregar input {
+    flex: 1;
+    min-width: 180px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    background: #fff;
+    color: #111;
+  }
+
+  #formAgregar button {
+    padding: 10px 20px;
+    background: #4CAF50;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+
+  #formAgregar button:hover {
+    background: #43a047;
+  }
+
+  /* 🔹 Tabla de usuarios */
+  #tabla {
+    max-width: 800px;
+    margin: 0 auto;
+    background: #f2f2f2;
+    padding: 20px;
+    border-radius: 12px;
+    color: #111;
+  }
+
+  .item {
+    margin-bottom: 10px;
+  }
+
+  .row {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  /* 🔹 Botones de acción */
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn {
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.3s;
+  }
+
+  .btn.delete {
+    background: #b00020;
+    color: white;
+  }
+
+  .btn.delete:hover {
+    background: #c62828;
+  }
+
+  .btn.block {
+    background: #ffb74d;
+    color: #111;
+  }
+
+  .btn.block:hover {
+    background: #ffa726;
+  }
+
+  .btn.deny {
+    background: #ef5350;
+    color: white;
+  }
+
+  .btn.deny:hover {
+    background: #e53935;
+  }
+
+  /* 🔹 Otros detalles */
+  hr {
+    border: 0;
+    border-top: 1px solid #ccc;
+    margin: 10px 0;
+  }
+
+  .small {
+    font-size: 12px;
+    color: #555;
+  }
+</style>
+
+</head>
+<body>
+  <h1>👥 Panel de Administración de Usuarios</h1>
+
+  <!-- 🔹 Formulario para agregar -->
+  <form id="formAgregar" onsubmit="agregarUsuario(event)">
+    <input type="text" id="nombre" placeholder="Nombre del usuario" required />
+    <input type="email" id="email" placeholder="Correo electrónico" required />
+    <input type="password" id="password" placeholder="Contraseña" required />
+    <button type="submit">➕ Agregar Usuario</button>
+  </form>
+
+  <!-- 🔹 Gráfica -->
+  <canvas id="grafica" width="400" height="200"></canvas>
+
+  <!-- 🔹 Tabla de usuarios -->
+  <div id="tabla"></div>
+</body>
+</html>
