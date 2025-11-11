@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Mapa total de cultivos — Nicaragua (maíz, frijol, sorgo)</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<style>
+  body{margin:0;font-family:Inter, system-ui, Arial;}
+  #map{position:fixed;inset:0;}
+  .controls {
+    position:absolute; left:10px; top:10px; z-index:1400;
+    background:rgba(255,255,255,0.95); padding:10px; border-radius:8px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.15); font-size:14px;
+  }
+  .legend {margin-top:8px;}
+  .legend div{display:flex;align-items:center;margin:4px 0;}
+  .sw{width:18px;height:12px;margin-right:8px;border-radius:2px}
+  .note{font-size:12px;color:#444;margin-top:6px}
+</style>
+
+</head>
+<body>
+
+<div class="controls">
+  <strong>Capas (Maíz / Frijol / Sorgo)</strong><br>
+  <label><input id="toggleMaiz" type="checkbox" checked> Maíz</label><br>
+  <label><input id="toggleFrijol" type="checkbox" checked> Frijol</label><br>
+  <label><input id="toggleSorgo" type="checkbox" checked> Sorgo</label>
+
+  <div class="legend">
+    <div><span class="sw" style="background:#ffd54f"></span> Maíz</div>
+    <div><span class="sw" style="background:#b26a2a"></span> Frijol</div>
+    <div><span class="sw" style="background:#f39c49"></span> Sorgo</div>
+  </div>
+  <div class="note">
+    Resolución (km por celda): 
+    <select id="resolution">
+      <option value="6">6 km (rápido)</option>
+      <option value="4">4 km</option>
+      <option value="2" selected>2 km (detallado)</option>
+      <option value="1">1 km (muy pesado)</option>
+    </select>
+    <button id="rebuild" style="margin-left:6px">Generar</button>
+  </div>
+  <div class="note">Haz click en una celda para ver cultivo y coordenadas.</div>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<!-- Turf.js para crear grilla y recortar polígonos -->
+<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
+<script>
+/* --------- Config inicial del mapa ---------- */
+const map = L.map('map').setView([12.87, -85.21], 7);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+/* LayerGroups para cada cultivo */
+const layerMaiz = L.layerGroup().addTo(map);
+const layerFrijol = L.layerGroup().addTo(map);
+const layerSorgo = L.layerGroup().addTo(map);
+
+/* Colores */
+const COLOR = {
+  maiz: '#ffd54f',
+  frijol: '#b26a2a',
+  sorgo: '#f39c49'
+};
+
+/* GeoJSON público con la geometría de Nicaragua.
+   Si el URL deja de funcionar puedes sustituir por otro GeoJSON del país. */
+const GEOJSON_NIC_URL = 'https://raw.githubusercontent.com/johan/world.geo.json/master/countries/NIC.geo.json';
+
+/* Obtiene el GeoJSON, genera la grilla y pinta las celdas */
+async function buildGrid(cellSideKm = 2) {
+  // limpiar capas previas
+  layerMaiz.clearLayers(); layerFrijol.clearLayers(); layerSorgo.clearLayers();
+
+  // Mostrar mensaje mínimo (console)
+  console.log('Descargando contorno de Nicaragua y creando grilla (celda ' + cellSideKm + ' km)...');
+
+  const res = await fetch(GEOJSON_NIC_URL);
+  if (!res.ok) {
+    alert('Error al descargar GeoJSON de Nicaragua. Revisa el URL o tu conexión.');
+    return;
+  }
+  const nic = await res.json();
+
+  // centrar mapa al país
+  const bbox = turf.bbox(nic);
+  map.fitBounds([[bbox[1], bbox[0]],[bbox[3], bbox[2]]], {padding:[20,20]});
+
+  // Crear grilla (squareGrid usa unidades 'kilometers')
+  // Ajusta 'cellSideKm' si necesitas más o menos resolución (1 km = muy fino)
+  const grid = turf.squareGrid(bbox, cellSideKm, {units: 'kilometers'});
+
+  // Por cada celda: recortar con la polígon de Nicaragua y si hay intersección, pintar
+  const features = grid.features;
+  for (let i = 0; i < features.length; i++) {
+    const cell = features[i];
+    // intersect puede devolver null si no hay intersección
+    const clipped = turf.intersect(cell, nic);
+    if (!clipped) continue;
+
+    // centroid para determinismo en la asignación de cultivo
+    const c = turf.centroid(clipped).geometry.coordinates; // [lng, lat]
+    const lon = c[0], lat = c[1];
+
+    // función hash sencilla y determinista según lat/lon -> valor en [0,1)
+    // usamos una mezcla sin Math.random para que sea repetible
+    const v = pseudoRandomFromCoords(lat, lon);
+
+    // Asignación: aquí puedes definir reglas (por latitud, suelos, o puro aleatorio determinista)
+    // Ejemplo simple: dividir en terciles
+    let crop;
+    if (v < 0.40) crop = 'maiz';       // 40% maíz
+    else if (v < 0.75) crop = 'frijol';// 35% frijol
+    else crop = 'sorgo';               // 25% sorgo
+
+    // convertir clipped a GeoJSON válido para Leaflet
+    const geojsonLayer = L.geoJSON(clipped, {
+      style: { color: COLOR[crop], fillColor: COLOR[crop], fillOpacity: 0.9, weight: 0.2 }
+    });
+
+    // popup con info mínima
+    geojsonLayer.bindPopup(`<b>Cultivo:</b> ${crop.toUpperCase()}<br><b>Centro:</b> ${lat.toFixed(5)}, ${lon.toFixed(5)}`);
+
+    // añadir a la capa correspondiente
+    if (crop === 'maiz') layerMaiz.addLayer(geojsonLayer);
+    else if (crop === 'frijol') layerFrijol.addLayer(geojsonLayer);
+    else layerSorgo.addLayer(geojsonLayer);
+  }
+
+  console.log('Grilla generada. Celdas totales (por capa):', layerMaiz.getLayers().length, layerFrijol.getLayers().length, layerSorgo.getLayers().length);
+}
+
+/* Generador determinista pseudo-aleatorio basado en coordenadas:
+   Devuelve número entre 0 y 1 que depende de lat/lon (siempre mismo resultado para misma posición).
+*/
+function pseudoRandomFromCoords(lat, lon) {
+  // combinación simple: multiplica y aplica funciones para dispersar
+  let x = Math.sin(lat * 12.9898 + lon * 78.233) * 43758.5453;
+  x = x - Math.floor(x);
+  if (x < 0) x += 1;
+  return x;
+}
+
+/* Controles on/off para capas */
+document.getElementById('toggleMaiz').addEventListener('change', e => {
+  e.target.checked ? map.addLayer(layerMaiz) : map.removeLayer(layerMaiz);
+});
+document.getElementById('toggleFrijol').addEventListener('change', e => {
+  e.target.checked ? map.addLayer(layerFrijol) : map.removeLayer(layerFrijol);
+});
+document.getElementById('toggleSorgo').addEventListener('change', e => {
+  e.target.checked ? map.addLayer(layerSorgo) : map.removeLayer(layerSorgo);
+});
+
+/* Botón para regenerar con diferente resolución */
+document.getElementById('rebuild').addEventListener('click', () => {
+  const km = parseFloat(document.getElementById('resolution').value);
+  // feedback visual mínimo
+  document.getElementById('rebuild').innerText = 'Generando...';
+  // pequeña pausa para que el cambio de texto se note
+  setTimeout(async () => {
+    await buildGrid(km);
+    document.getElementById('rebuild').innerText = 'Generar';
+  }, 50);
+});
+
+/* Al cargar la página, construir grilla por defecto (2 km) */
+buildGrid(parseFloat(document.getElementById('resolution').value));
+
+</script>
+</body>
+</html>
