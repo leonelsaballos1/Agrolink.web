@@ -1,182 +1,1039 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mapa Global de Cultivos - Nicaragua</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-<style>
-  body {
-    font-family: 'Poppins', sans-serif;
-    margin: 0;
-    background: #faf7f2;
-  }
-  header {
-    background-color: #e6a840;
-    color: white;
-    text-align: center;
-    padding: 15px;
-    font-size: 22px;
-    font-weight: bold;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-  }
-  #map { height: 88vh; width: 100%; }
-  #controls {
-    position: absolute;
-    top: 90px;
-    left: 10px;
-    z-index: 1000;
-    background: rgba(255,255,255,0.9);
-    padding: 12px;
-    border-radius: 10px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.2);
-    font-size: 14px;
-  }
-  #controls label { display: block; margin: 5px 0; }
-  #search-container {
-    position: absolute;
-    top: 20px;
-    right: 15px;
-    z-index: 1000;
-    background: rgba(255,255,255,0.9);
-    padding: 10px;
-    border-radius: 10px;
-    box-shadow: 0 0 8px rgba(0,0,0,0.2);
-  }
-  #search {
-    padding: 5px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-  }
-  button {
-    padding: 5px 10px;
-    border: none;
-    border-radius: 5px;
-    background: #e6a840;
-    color: white;
-    cursor: pointer;
-  }
-  button:hover { background: #d6951f; }
-  .leaflet-popup-content b { color: #005f1f; }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mapa Agrícola de Nicaragua</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Leaflet CSS for maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <!-- Leaflet JavaScript -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Turf.js for geospatial analysis -->
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+  <style id="app-style">
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    
+    #map {
+      height: 100%;
+      width: 100%;
+      z-index: 1;
+    }
+    
+    .info-panel {
+      z-index: 10;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    }
+    
+    .map-legend {
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      line-height: 1.5em;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      margin-right: 8px;
+      border-radius: 3px;
+    }
+    
+    .offline-indicator {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background-color: #f56565;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      display: none;
+      z-index: 1000;
+    }
+    
+    .loader {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #3498db;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    /* Custom radio buttons for layer selection */
+    .layer-radio {
+      display: none;
+    }
+    
+    .layer-label {
+      display: inline-block;
+      padding: 8px 12px;
+      margin: 4px 2px;
+      background-color: #e2e8f0;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .layer-radio:checked + .layer-label {
+      background-color: #4299e1;
+      color: white;
+    }
+    
+    .saved-location-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 0.9rem;
+    }
+    
+    .saved-location-item:last-child {
+      border-bottom: none;
+    }
+    
+    .saved-location-coords {
+      flex: 1;
+    }
+    
+    .saved-location-actions {
+      display: flex;
+      gap: 4px;
+    }
+    
+    .saved-location-btn {
+      background-color: #e2e8f0;
+      border-radius: 4px;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+    
+    .saved-location-btn:hover {
+      background-color: #cbd5e0;
+    }
+  </style>
 </head>
-<body>
+<body class="bg-gray-100">
+  <div id="map" class="relative"></div>
+  
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+      <div class="loader mx-auto mb-4"></div>
+      <h3 class="text-xl font-bold">Cargando mapa de Nicaragua</h3>
+      <p class="text-gray-600">Espere mientras cargamos los datos agrícolas...</p>
+    </div>
+  </div>
+  
+  <!-- Offline Indicator -->
+  <div id="offline-indicator" class="offline-indicator">
+    <i class="fas fa-wifi-slash mr-2"></i> Modo sin conexión
+  </div>
+  
+  <!-- Control Panel -->
+  <div class="absolute top-5 left-5 z-10 info-panel p-4 w-64 md:w-80">
+    <h2 class="text-lg font-bold text-center mb-2">Mapa Agrícola de Nicaragua</h2>
+    
+    <div class="mb-4">
+      <h3 class="font-semibold mb-2">Cultivos:</h3>
+      <div class="flex flex-wrap">
+        <input type="radio" id="maiz" name="crop" value="maiz" class="layer-radio" checked>
+        <label for="maiz" class="layer-label">
+          <i class="fas fa-seedling mr-2"></i>Maíz
+        </label>
+        
+        <input type="radio" id="frijoles" name="crop" value="frijoles" class="layer-radio">
+        <label for="frijoles" class="layer-label">
+          <i class="fas fa-leaf mr-2"></i>Frijoles
+        </label>
+        
+        <input type="radio" id="sorgo" name="crop" value="sorgo" class="layer-radio">
+        <label for="sorgo" class="layer-label">
+          <i class="fas fa-wheat-awn mr-2"></i>Sorgo
+        </label>
+      </div>
+    </div>
+    
+    <div class="mb-4">
+      <h3 class="font-semibold mb-2">Datos del suelo:</h3>
+      <div class="flex items-center">
+        <input type="checkbox" id="soil" class="form-checkbox h-5 w-5 text-blue-600">
+        <label for="soil" class="ml-2">Mostrar tipo de suelo</label>
+      </div>
+      <div class="flex items-center mt-2">
+        <input type="checkbox" id="moisture" class="form-checkbox h-5 w-5 text-blue-600">
+        <label for="moisture" class="ml-2">Mostrar humedad actual</label>
+      </div>
+    </div>
+    
+    <div class="mb-4">
+      <h3 class="font-semibold mb-2">Escenario climático:</h3>
+      <div class="flex items-center justify-between bg-gray-200 rounded-lg p-1">
+        <span id="current-climate" class="px-4 py-2 rounded-md bg-blue-500 text-white text-center flex-1 cursor-pointer">Actual</span>
+        <span id="future-climate" class="px-4 py-2 rounded-md text-center flex-1 cursor-pointer">Futuro</span>
+      </div>
+    </div>
+    
+    
+      
+      <div class="mt-2">
+        <p class="mb-1 text-sm">Buscar por coordenadas GPS:</p>
+        <div class="flex gap-2 mb-2">
+          <div class="flex-1">
+            <input type="text" id="lat-input" placeholder="Latitud" class="w-full border rounded px-2 py-1">
+          </div>
+          <div class="flex-1">
+            <input type="text" id="lng-input" placeholder="Longitud" class="w-full border rounded px-2 py-1">
+          </div>
+        </div>
+        <div class="flex items-center mb-2">
+          <button id="coord-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-1 px-4 rounded-lg flex items-center justify-center">
+            <i class="fas fa-map-marker-alt mr-2"></i> Ir a coordenadas
+          </button>
+          <button id="gps-btn" title="Usar mi ubicación" class="bg-blue-600 hover:bg-blue-700 text-white h-10 w-10 rounded-lg flex items-center justify-center ml-2 flex-shrink-0">
+            <i class="fas fa-location-arrow"></i>
+          </button>
+        </div>
+        
+        <div class="mt-2">
+          <p class="mb-1 text-sm">Usar enlace de Google Maps:</p>
+          <div class="flex gap-2 mb-2">
+            <div class="flex-1">
+              <input type="text" id="link-input" placeholder="Pegar enlace GPS (Google Maps)" class="w-full border rounded px-2 py-1">
+            </div>
+          </div>
+          <button id="link-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-1 px-4 rounded-lg flex items-center justify-center mb-2">
+            <i class="fas fa-link mr-2"></i> Ir a enlace
+          </button>
+        </div>
+        
+        <button id="save-location-btn" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-1 px-4 rounded-lg flex items-center justify-center">
+          <i class="fas fa-save mr-2"></i> Guardar ubicación
+        </button>
+      </div>
+    </div>
+    
+    <!-- New Saved Locations Section -->
+    <div class="mb-4">
+      <h3 class="font-semibold mb-2">Ubicaciones guardadas:</h3>
+      <div id="saved-locations-list" class="bg-gray-50 border rounded p-2 max-h-36 overflow-y-auto">
+        <p class="text-gray-500 text-sm italic text-center">No hay ubicaciones guardadas</p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Map Legend -->
+  <div class="absolute bottom-5 right-5 z-10 map-legend">
+    <h3 class="font-semibold mb-2">Aptitud de Cultivo:</h3>
+    <div class="legend-item">
+      <div class="legend-color" style="background-color: #38A169;"></div>
+      <span>Excelente</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background-color: #90CDF4;"></div>
+      <span>Buena</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background-color: #FBD38D;"></div>
+      <span>Moderada</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background-color: #FC8181;"></div>
+      <span>Baja</span>
+    </div>
+  </div>
+  
+  <!-- Advice Button -->
+  <div class="absolute bottom-5 left-5 z-10">
+    <button id="advice-btn" class="bg-blue-600 hover:bg-blue-700 text-white h-14 w-14 rounded-full flex items-center justify-center shadow-lg">
+      <i class="fas fa-lightbulb text-xl"></i>
+    </button>
+  </div>
+  
+  <!-- Advice Panel (hidden by default) -->
+  <div id="advice-panel" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold">Recomendaciones</h3>
+        <button id="close-advice" class="text-gray-500 hover:text-gray-700">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <p class="text-gray-600 mb-4">Selecciona un punto en el mapa, utiliza tu ubicación GPS o ingresa coordenadas manuales para obtener recomendaciones específicas.</p>
+      
+      <div id="advice-content" class="border-t pt-4">
+        <p class="text-center text-gray-500 italic">Haz clic en el mapa para ver recomendaciones</p>
+      </div>
+    </div>
+  </div>
 
-<!-- Botón de regreso -->
-<button onclick="history.back()" style="padding: 10px 20px; font-size: 24px; cursor: pointer; border: none; background: none; color: black;">&#x2B05;</button>
-
-<header>🌍 Mapa Global de Cultivos - Nicaragua</header>
-
-<!-- Controles -->
-<div id="controls">
-  <h4>🧭 Capas de información</h4>
-  <label><input type="checkbox" id="maiz" checked> Zonas de Maíz 🌽</label>
-  <label><input type="checkbox" id="frijol" checked> Zonas de Frijol 🫘</label>
-  <label><input type="checkbox" id="sorgo" checked> Zonas de Sorgo 🌾</label>
-  <hr>
-  <label><input type="checkbox" id="clima" checked> Capa Climática ☀️</label>
-</div>
-
-<!-- Búsqueda -->
-<div id="search-container">
-  <input id="search" type="text" placeholder="Buscar departamento...">
-  <button onclick="buscar()">🔍</button>
-</div>
-
-<!-- Mapa -->
-<div id="map"></div>
-
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script>
-const map = L.map('map').setView([12.8654, -85.2072], 7);
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; OpenStreetMap contributors'
-}).addTo(map);
-
-// =============================
-// 🟢 ZONAS DE CULTIVOS (AMPLIADAS A TODO EL PAÍS)
-// =============================
-
-const zonasMaiz = L.layerGroup([
-  L.polygon([[12.9, -86.9],[12.6, -86.7],[12.3, -86.3],[12.0, -86.9]], { color: "#ffcc00", fillColor: "#ffe680", fillOpacity: 0.6 }),
-  L.polygon([[13.3, -86.8],[13.0, -86.5],[12.8, -86.1],[13.1, -86.0]], { color: "#ffcc00", fillColor: "#ffe680", fillOpacity: 0.6 }),
-  L.polygon([[11.8, -85.8],[11.5, -85.6],[11.2, -85.8],[11.4, -86.0]], { color: "#ffcc00", fillColor: "#ffe680", fillOpacity: 0.6 })
-]).bindPopup("<b>Zona Maicera</b><br>Principales: León, Managua, Rivas, Estelí.<br><b>Condiciones:</b> 22–28°C, 800–1800 mm lluvia.");
-
-const zonasFrijol = L.layerGroup([
-  L.polygon([[13.2, -86.6],[13.3, -86.0],[12.8, -85.9],[12.6, -86.4]], { color: "#8b4513", fillColor: "#deb887", fillOpacity: 0.6 }),
-  L.polygon([[13.4, -85.7],[13.1, -85.5],[12.9, -85.3],[13.2, -85.1]], { color: "#8b4513", fillColor: "#deb887", fillOpacity: 0.6 }),
-  L.polygon([[12.2, -85.7],[12.0, -85.4],[11.8, -85.7],[12.1, -86.0]], { color: "#8b4513", fillColor: "#deb887", fillOpacity: 0.6 })
-]).bindPopup("<b>Zona Frijolera</b><br>Principales: Estelí, Matagalpa, Jinotega, Boaco.<br><b>Condiciones:</b> 20–28°C, 800–1500 mm lluvia.");
-
-const zonasSorgo = L.layerGroup([
-  L.polygon([[12.4, -85.9],[12.1, -85.5],[11.8, -85.7],[12.2, -86.0]], { color: "#14d", fillColor: "#f0c090", fillOpacity: 0.6 }),
-  L.polygon([[13.0, -86.9],[12.8, -86.6],[12.6, -86.9],[12.8, -87.0]], { color: "#14d", fillColor: "#f0c090", fillOpacity: 0.6 }),
-  L.polygon([[11.9, -86.2],[11.6, -86.0],[11.5, -85.7],[11.8, -85.9]], { color: "#14d", fillColor: "#f0c090", fillOpacity: 0.6 })
-]).bindPopup("<b>Zona Sorguera</b><br>Principales: Boaco, Chontales, Carazo, Rivas.<br><b>Condiciones:</b> 24–32°C, 800–1200 mm lluvia.");
-
-// =============================
-// ☀️ CAPA CLIMÁTICA (EXTENDIDA)
-// =============================
-
-const clima = L.layerGroup([
-  L.circle([12.5, -86.2], { radius: 80000, color: "blue", fillColor: "blue", fillOpacity: 0.2 })
-    .bindPopup("<b>Zona húmeda</b><br>Alta precipitación (2000 mm)"),
-  L.circle([13.0, -85.5], { radius: 80000, color: "orange", fillColor: "orange", fillOpacity: 0.2 })
-    .bindPopup("<b>Zona cálida</b><br>Temperaturas promedio 30°C"),
-  L.circle([11.8, -85.9], { radius: 80000, color: "green", fillColor: "green", fillOpacity: 0.2 })
-    .bindPopup("<b>Zona templada</b><br>Ideal para maíz y sorgo (25°C, 1200 mm)"),
-  L.circle([13.4, -86.2], { radius: 70000, color: "cyan", fillColor: "cyan", fillOpacity: 0.2 })
-    .bindPopup("<b>Zona fresca</b><br>Temperaturas entre 18–24°C")
-]);
-
-// =============================
-// 🔍 BÚSQUEDA DE DEPARTAMENTOS
-// =============================
-
-const departamentos = {
-  "Rivas": [11.4333, -85.8333],
-  "Carazo": [11.75, -86.2],
-  "Chontales": [12.5, -85.5],
-  "Managua": [12.1333, -86.25],
-  "León": [12.43, -86.88],
-  "Chinandega": [12.61, -87.13],
-  "Estelí": [13.08, -86.35],
-  "Matagalpa": [12.92, -85.92],
-  "Boaco": [12.47, -85.66],
-  "Jinotega": [13.1, -85.98],
-  "RAAN": [13.5, -84.0],
-  "RAAS": [12.0, -83.8],
-  "Nueva Segovia": [13.6, -86.2],
-  "Madriz": [13.47, -86.5],
-  "Masaya": [11.97, -86.09],
-  "Granada": [11.93, -85.95]
-};
-
-function buscar() {
-  const input = document.getElementById("search").value.trim();
-  if (departamentos[input]) {
-    map.setView(departamentos[input], 9);
-  } else {
-    alert("Departamento no encontrado");
-  }
-}
-
-// =============================
-// ✅ GESTIÓN DE CAPAS
-// =============================
-
-zonasMaiz.addTo(map);
-zonasFrijol.addTo(map);
-zonasSorgo.addTo(map);
-clima.addTo(map);
-
-document.getElementById('maiz').addEventListener('change', e => e.target.checked ? map.addLayer(zonasMaiz) : map.removeLayer(zonasMaiz));
-document.getElementById('frijol').addEventListener('change', e => e.target.checked ? map.addLayer(zonasFrijol) : map.removeLayer(zonasFrijol));
-document.getElementById('sorgo').addEventListener('change', e => e.target.checked ? map.addLayer(zonasSorgo) : map.removeLayer(zonasSorgo));
-document.getElementById('clima').addEventListener('change', e => e.target.checked ? map.addLayer(clima) : map.removeLayer(clima));
-</script>
-
+  <script id="app-script">
+    // Initialize the map centered on Nicaragua
+    const map = L.map('map').setView([12.6, -85.0], 7);
+    let userMarker = null;
+    let currentLayerName = 'maiz';
+    let currentLayer = null;
+    let isCurrentClimate = true;
+    let selectedPoint = null;
+    let savedLocationMarkers = []; // Track saved location markers
+    
+    // Add base map layer (OpenStreetMap)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19
+    }).addTo(map);
+    
+    // Define crop suitability layers
+    const layers = {
+      maiz: {
+        current: L.layerGroup(),
+        future: L.layerGroup()
+      },
+      frijoles: {
+        current: L.layerGroup(),
+        future: L.layerGroup()
+      },
+      sorgo: {
+        current: L.layerGroup(),
+        future: L.layerGroup()
+      }
+    };
+    
+    // Additional layers
+    const soilLayer = L.layerGroup();
+    const moistureLayer = L.layerGroup();
+    
+    // Create fake regions for different crop suitability (simulated data)
+    function createSuitabilityRegions(cropType) {
+      // These would eventually be replaced by real GeoJSON data from an API
+      const regions = [
+        { 
+          coords: [[12.5, -86.0], [12.8, -86.0], [12.8, -85.7], [12.5, -85.7]], 
+          suitability: 'excellent',
+          color: '#38A169',
+          fillColor: '#38A169',
+          fillOpacity: 0.5
+        },
+        { 
+          coords: [[12.2, -85.5], [12.5, -85.5], [12.5, -85.2], [12.2, -85.2]], 
+          suitability: 'good',
+          color: '#90CDF4',
+          fillColor: '#90CDF4',
+          fillOpacity: 0.5
+        },
+        { 
+          coords: [[13.0, -85.8], [13.3, -85.8], [13.3, -85.5], [13.0, -85.5]], 
+          suitability: 'moderate',
+          color: '#FBD38D',
+          fillColor: '#FBD38D',
+          fillOpacity: 0.5
+        },
+        { 
+          coords: [[13.5, -84.8], [13.8, -84.8], [13.8, -84.5], [13.5, -84.5]], 
+          suitability: 'low',
+          color: '#FC8181',
+          fillColor: '#FC8181',
+          fillOpacity: 0.5
+        }
+      ];
+      
+      // Add some variation based on crop type
+      const variations = {
+        maiz: [0, 0],
+        frijoles: [0.3, -0.3],
+        sorgo: [-0.3, 0.3]
+      };
+      
+      const variation = variations[cropType];
+      
+      return regions.map(region => {
+        // Adjust coordinates for different crops
+        const adjustedCoords = region.coords.map(coord => [
+          coord[0] + variation[0], 
+          coord[1] + variation[1]
+        ]);
+        
+        return {
+          ...region,
+          coords: adjustedCoords
+        };
+      });
+    }
+    
+    // Create fake future climate scenario regions (slightly different than current)
+    function createFutureRegions(cropType) {
+      const regions = createSuitabilityRegions(cropType);
+      
+      // For future projections, we'll shift regions slightly and change some suitabilities
+      return regions.map(region => {
+        const newCoords = region.coords.map(coord => [
+          coord[0] + 0.2, 
+          coord[1] - 0.1
+        ]);
+        
+        // Change some suitabilities based on "climate change"
+        let newSuitability = region.suitability;
+        let newColor = region.color;
+        let newFillColor = region.fillColor;
+        
+        // Simulate climate change effects (some areas become less suitable)
+        if (region.suitability === 'excellent') {
+          newSuitability = 'good';
+          newColor = '#90CDF4';
+          newFillColor = '#90CDF4';
+        } else if (region.suitability === 'good') {
+          newSuitability = 'moderate';
+          newColor = '#FBD38D';
+          newFillColor = '#FBD38D';
+        }
+        
+        return {
+          ...region,
+          coords: newCoords,
+          suitability: newSuitability,
+          color: newColor,
+          fillColor: newFillColor
+        };
+      });
+    }
+    
+    // Initialize all crop layers
+    function initializeLayers() {
+      Object.keys(layers).forEach(cropType => {
+        // Create current climate polygons
+        createSuitabilityRegions(cropType).forEach(region => {
+          const polygon = L.polygon(region.coords, {
+            color: region.color,
+            fillColor: region.fillColor,
+            fillOpacity: region.fillOpacity
+          });
+          
+          polygon.bindTooltip(`Aptitud para ${cropType}: ${translateSuitability(region.suitability)}`);
+          layers[cropType].current.addLayer(polygon);
+        });
+        
+        // Create future climate polygons
+        createFutureRegions(cropType).forEach(region => {
+          const polygon = L.polygon(region.coords, {
+            color: region.color,
+            fillColor: region.fillColor,
+            fillOpacity: region.fillOpacity
+          });
+          
+          polygon.bindTooltip(`Aptitud para ${cropType} (futuro): ${translateSuitability(region.suitability)}`);
+          layers[cropType].future.addLayer(polygon);
+        });
+      });
+      
+      // Create soil type regions
+      const soilTypes = [
+        { coords: [[12.7, -85.8], [13.0, -85.8], [13.0, -85.5], [12.7, -85.5]], type: 'Arcilloso', color: '#8B4513' },
+        { coords: [[12.3, -84.9], [12.6, -84.9], [12.6, -84.6], [12.3, -84.6]], type: 'Arenoso', color: '#D2B48C' },
+        { coords: [[11.9, -85.4], [12.2, -85.4], [12.2, -85.1], [11.9, -85.1]], type: 'Franco', color: '#A0522D' }
+      ];
+      
+      soilTypes.forEach(soil => {
+        const polygon = L.polygon(soil.coords, {
+          color: soil.color,
+          fillColor: soil.color,
+          fillOpacity: 0.6
+        });
+        polygon.bindTooltip(`Suelo: ${soil.type}`);
+        soilLayer.addLayer(polygon);
+      });
+      
+      // Create moisture regions
+      const moistureData = [
+        { coords: [[12.9, -86.1], [13.2, -86.1], [13.2, -85.8], [12.9, -85.8]], level: 'Alta', color: '#4299e1' },
+        { coords: [[12.4, -85.0], [12.7, -85.0], [12.7, -84.7], [12.4, -84.7]], level: 'Media', color: '#90cdf4' },
+        { coords: [[11.7, -85.6], [12.0, -85.6], [12.0, -85.3], [11.7, -85.3]], level: 'Baja', color: '#ecc94b' }
+      ];
+      
+      moistureData.forEach(moisture => {
+        const polygon = L.polygon(moisture.coords, {
+          color: moisture.color,
+          fillColor: moisture.color,
+          fillOpacity: 0.6
+        });
+        polygon.bindTooltip(`Humedad: ${moisture.level}`);
+        moistureLayer.addLayer(polygon);
+      });
+    }
+    
+    function translateSuitability(suitability) {
+      const translations = {
+        'excellent': 'Excelente',
+        'good': 'Buena',
+        'moderate': 'Moderada',
+        'low': 'Baja'
+      };
+      
+      return translations[suitability] || suitability;
+    }
+    
+    // Handle layer changes
+    function updateLayer() {
+      // Remove current layer
+      if (currentLayer) {
+        map.removeLayer(currentLayer);
+      }
+      
+      // Add the selected crop and climate layer
+      if (isCurrentClimate) {
+        currentLayer = layers[currentLayerName].current;
+      } else {
+        currentLayer = layers[currentLayerName].future;
+      }
+      
+      map.addLayer(currentLayer);
+    }
+    
+    // Handle crop selection
+    document.querySelectorAll('input[name="crop"]').forEach(input => {
+      input.addEventListener('change', (e) => {
+        currentLayerName = e.target.value;
+        updateLayer();
+      });
+    });
+    
+    // Handle climate scenario toggle
+    document.getElementById('current-climate').addEventListener('click', () => {
+      if (!isCurrentClimate) {
+        isCurrentClimate = true;
+        document.getElementById('current-climate').classList.add('bg-blue-500', 'text-white');
+        document.getElementById('future-climate').classList.remove('bg-blue-500', 'text-white');
+        updateLayer();
+      }
+    });
+    
+    document.getElementById('future-climate').addEventListener('click', () => {
+      if (isCurrentClimate) {
+        isCurrentClimate = false;
+        document.getElementById('future-climate').classList.add('bg-blue-500', 'text-white');
+        document.getElementById('current-climate').classList.remove('bg-blue-500', 'text-white');
+        updateLayer();
+      }
+    });
+    
+    // Handle soil layer toggle
+    document.getElementById('soil').addEventListener('change', (e) => {
+      if (e.target.checked) {
+        map.addLayer(soilLayer);
+      } else {
+        map.removeLayer(soilLayer);
+      }
+    });
+    
+    // Handle moisture layer toggle
+    document.getElementById('moisture').addEventListener('change', (e) => {
+      if (e.target.checked) {
+        map.addLayer(moistureLayer);
+      } else {
+        map.removeLayer(moistureLayer);
+      }
+    });
+    
+    // Function to fetch national GeoJSON data
+    async function fetchNationalData() {
+      // This function would fetch real GeoJSON data from an API
+      // For now we're using the simulated data from createSuitabilityRegions
+      console.log("Fetching national crop suitability data...");
+      return true; // Simulate successful data fetch
+    }
+    
+    // Handle GPS button
+    document.getElementById('gps-btn').addEventListener('click', () => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            // Update or create user marker
+            if (userMarker) {
+              userMarker.setLatLng([lat, lng]);
+            } else {
+              userMarker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                  html: '<i class="fas fa-user-circle fa-3x text-blue-600"></i>',
+                  className: 'user-marker',
+                  iconSize: [30, 30],
+                  iconAnchor: [15, 15]
+                })
+              }).addTo(map);
+              
+              userMarker.bindPopup('Tu ubicación').openPopup();
+            }
+            
+            // Center map on user position
+            map.setView([lat, lng], 12);
+            
+            // Set as selected point for advice
+            selectedPoint = [lat, lng];
+          },
+          (error) => {
+            alert('Error al acceder a tu ubicación: ' + error.message);
+          }
+        );
+      } else {
+        alert('Tu navegador no soporta geolocalización');
+      }
+    });
+    
+    // Handle coordinates button
+    document.getElementById('coord-btn').addEventListener('click', () => {
+      const lat = parseFloat(document.getElementById('lat-input').value);
+      const lng = parseFloat(document.getElementById('lng-input').value);
+      
+      if (isNaN(lat) || isNaN(lng)) {
+        alert('Por favor ingrese coordenadas válidas');
+        return;
+      }
+      
+      // Update or create user marker
+      if (userMarker) {
+        userMarker.setLatLng([lat, lng]);
+      } else {
+        userMarker = L.marker([lat, lng], {
+          icon: L.divIcon({
+            html: '<i class="fas fa-user-circle fa-3x text-blue-600"></i>',
+            className: 'user-marker',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+          })
+        }).addTo(map);
+        
+        userMarker.bindPopup('Ubicación seleccionada').openPopup();
+      }
+      
+      // Center map on selected position
+      map.setView([lat, lng], 12);
+      
+      // Set as selected point for advice
+      selectedPoint = [lat, lng];
+    });
+    
+    // Handle links button
+    document.getElementById('link-btn').addEventListener('click', () => {
+      const linkText = document.getElementById('link-input').value.trim();
+      
+      if (!linkText) {
+        alert('Por favor ingrese un enlace de Google Maps');
+        return;
+      }
+      
+      try {
+        // Try to extract coordinates from Google Maps URL
+        // Pattern 1: ?q=lat,lng format
+        let matches = linkText.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+        
+        // Pattern 2: /@lat,lng, format
+        if (!matches) {
+          matches = linkText.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+        }
+        
+        // Pattern 3: /ll=lat,lng format
+        if (!matches) {
+          matches = linkText.match(/ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
+        }
+        
+        if (!matches) {
+          throw new Error('No se pudieron encontrar coordenadas en el enlace');
+        }
+        
+        const lat = parseFloat(matches[1]);
+        const lng = parseFloat(matches[2]);
+        
+        if (isNaN(lat) || isNaN(lng)) {
+          throw new Error('Coordenadas inválidas en el enlace');
+        }
+        
+        // Update or create user marker
+        if (userMarker) {
+          userMarker.setLatLng([lat, lng]);
+        } else {
+          userMarker = L.marker([lat, lng], {
+            icon: L.divIcon({
+              html: '<i class="fas fa-user-circle fa-3x text-blue-600"></i>',
+              className: 'user-marker',
+              iconSize: [30, 30],
+              iconAnchor: [15, 15]
+            })
+          }).addTo(map);
+        }
+        
+        userMarker.bindPopup('Ubicación desde enlace').openPopup();
+        
+        // Center map on selected position
+        map.setView([lat, lng], 12);
+        
+        // Set as selected point for advice
+        selectedPoint = [lat, lng];
+        
+        // Optional: clear the input
+        // document.getElementById('link-input').value = '';
+        
+      } catch (error) {
+        console.error('Error parsing Google Maps link:', error);
+        alert('Enlace inválido. Por favor pegue un enlace válido de Google Maps.');
+      }
+    });
+    
+    // Handle advice button click
+    document.getElementById('advice-btn').addEventListener('click', () => {
+      document.getElementById('advice-panel').classList.remove('hidden');
+      if (selectedPoint) {
+        updateAdviceContent(selectedPoint);
+      }
+    });
+    
+    // Handle close advice panel
+    document.getElementById('close-advice').addEventListener('click', () => {
+      document.getElementById('advice-panel').classList.add('hidden');
+    });
+    
+    // Handle click on map for advice
+    map.on('click', (e) => {
+      selectedPoint = [e.latlng.lat, e.latlng.lng];
+      
+      // If advice panel is open, update content
+      if (!document.getElementById('advice-panel').classList.contains('hidden')) {
+        updateAdviceContent(selectedPoint);
+      }
+    });
+    
+    // Function to fetch advice from AI Loop
+    async function fetchAdvice(soilType, soilMoisture, cropType) {
+      try {
+        const response = await fetch('https://magicloops.dev/api/loop/fertilizer-irrigation-advisor/run', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            soilType,
+            soilMoisture,
+            cropType
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error('Error en la respuesta del servicio');
+        }
+        
+        return await response.json();
+      } catch (error) {
+        console.error('Error fetching advice:', error);
+        throw error;
+      }
+    }
+    
+    function updateAdviceContent(location) {
+      const adviceContent = document.getElementById('advice-content');
+      
+      // Clear previous content
+      adviceContent.innerHTML = '';
+      
+      // Add loading indicator
+      const loadingDiv = document.createElement('div');
+      loadingDiv.innerHTML = `
+        <div class="flex items-center justify-center">
+          <div class="loader mr-3"></div>
+          <span>Obteniendo recomendaciones...</span>
+        </div>
+      `;
+      adviceContent.appendChild(loadingDiv);
+      
+      // Get soil and moisture data at the selected point
+      let soilType = 'Franco'; // Default value
+      let soilMoisture = 'Media'; // Default value
+      
+      // Use Turf.js to find soil type at the selected point
+      if (map.hasLayer(soilLayer)) {
+        soilLayer.eachLayer(layer => {
+          if (layer.getLatLngs && turf.booleanPointInPolygon(
+            turf.point([location[1], location[0]]), 
+            turf.polygon([layer.getLatLngs()[0].map(latlng => [latlng.lng, latlng.lat])])
+          )) {
+            soilType = layer.getTooltip().getContent().replace('Suelo: ', '');
+          }
+        });
+      }
+      
+      // Use Turf.js to find moisture level at the selected point
+      if (map.hasLayer(moistureLayer)) {
+        moistureLayer.eachLayer(layer => {
+          if (layer.getLatLngs && turf.booleanPointInPolygon(
+            turf.point([location[1], location[0]]), 
+            turf.polygon([layer.getLatLngs()[0].map(latlng => [latlng.lng, latlng.lat])])
+          )) {
+            soilMoisture = layer.getTooltip().getContent().replace('Humedad: ', '');
+          }
+        });
+      }
+      
+      // Check if we're online
+      if (navigator.onLine) {
+        // Fetch advice from API
+        fetchAdvice(soilType, soilMoisture, currentLayerName)
+          .then(data => {
+            adviceContent.innerHTML = `
+              <div class="mb-4">
+                <h4 class="font-bold">Ubicación</h4>
+                <p>Latitud: ${location[0].toFixed(4)}, Longitud: ${location[1].toFixed(4)}</p>
+              </div>
+              
+              <div class="mb-4">
+                <h4 class="font-bold">Recomendaciones para ${currentLayerName}</h4>
+                <p class="mb-2">Basado en suelo ${soilType} con humedad ${soilMoisture}</p>
+              </div>
+              
+              <div class="mb-4">
+                <h4 class="font-bold">Fertilizantes recomendados</h4>
+                <p>${data.fertilizer}</p>
+              </div>
+              
+              <div>
+                <h4 class="font-bold">Irrigación</h4>
+                <p>${data.irrigation}</p>
+              </div>
+            `;
+          })
+          .catch(error => {
+            adviceContent.innerHTML = `
+              <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                <strong class="font-bold">Error:</strong>
+                <span class="block">No se pudieron obtener recomendaciones. Por favor intente nuevamente.</span>
+                <span class="block text-sm">${error.message}</span>
+              </div>
+            `;
+          });
+      } else {
+        // Offline mode
+        adviceContent.innerHTML = `
+          <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+            <strong class="font-bold">Modo sin conexión:</strong>
+            <span class="block">Las recomendaciones no están disponibles sin conexión a internet.</span>
+            <span class="block">Por favor conecte a internet e intente nuevamente.</span>
+          </div>
+        `;
+      }
+    }
+    
+    // Check for offline status
+    function updateOnlineStatus() {
+      const indicator = document.getElementById('offline-indicator');
+      
+      if (navigator.onLine) {
+        indicator.style.display = 'none';
+      } else {
+        indicator.style.display = 'block';
+      }
+    }
+    
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    
+    // Simulating stored data in localStorage for offline use
+    function setupLocalStorage() {
+      // Check if we've stored crop data
+      if (!localStorage.getItem('nicaragua_crop_data')) {
+        // Store dummy data
+        localStorage.setItem('nicaragua_crop_data', JSON.stringify({
+          lastUpdated: new Date().toISOString(),
+          crops: ['maiz', 'frijoles', 'sorgo']
+        }));
+      }
+    }
+    
+    // New function to save location to localStorage
+    function saveLocation() {
+      if (!selectedPoint) {
+        alert('Primero selecciona una ubicación');
+        return;
+      }
+      
+      // Get existing saved locations or create new array
+      let savedLocations = JSON.parse(localStorage.getItem('savedPlantingLocations') || '[]');
+      
+      // Add new location
+      savedLocations.push({
+        lat: selectedPoint[0],
+        lng: selectedPoint[1],
+        timestamp: new Date().toISOString()
+      });
+      
+      // Save to localStorage
+      localStorage.setItem('savedPlantingLocations', JSON.stringify(savedLocations));
+      
+      // Update UI and map
+      displaySavedLocations();
+      addSavedLocationMarker(selectedPoint[0], selectedPoint[1]);
+      
+      alert('Ubicación guardada correctamente');
+    }
+    
+    // Function to display saved locations in the UI
+    function displaySavedLocations() {
+      const savedLocationsList = document.getElementById('saved-locations-list');
+      const savedLocations = JSON.parse(localStorage.getItem('savedPlantingLocations') || '[]');
+      
+      if (savedLocations.length === 0) {
+        savedLocationsList.innerHTML = '<p class="text-gray-500 text-sm italic text-center">No hay ubicaciones guardadas</p>';
+        return;
+      }
+      
+      let html = '';
+      
+      savedLocations.forEach((location, index) => {
+        const lat = parseFloat(location.lat).toFixed(4);
+        const lng = parseFloat(location.lng).toFixed(4);
+        const googleMapsUrl = `https://www.google.com/maps?q=${location.lat},${location.lng}`;
+        
+        html += `
+          <div class="saved-location-item">
+            <div class="saved-location-coords">
+              ${lat}, ${lng}
+            </div>
+            <div class="saved-location-actions">
+              <div class="saved-location-btn copy-btn" data-url="${googleMapsUrl}" title="Copiar enlace a Google Maps">
+                <i class="fas fa-copy"></i>
+              </div>
+              <div class="saved-location-btn open-btn" data-url="${googleMapsUrl}" title="Abrir en Google Maps">
+                <i class="fas fa-external-link-alt"></i>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      
+      savedLocationsList.innerHTML = html;
+      
+      // Add event listeners to new buttons
+      document.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const url = this.getAttribute('data-url');
+          navigator.clipboard.writeText(url)
+            .then(() => {
+              alert('Enlace copiado al portapapeles');
+            })
+            .catch(err => {
+              console.error('Error al copiar:', err);
+              alert('No se pudo copiar el enlace');
+            });
+        });
+      });
+      
+      document.querySelectorAll('.open-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const url = this.getAttribute('data-url');
+          window.open(url, '_blank');
+        });
+      });
+    }
+    
+    // Function to add a saved location marker to the map
+    function addSavedLocationMarker(lat, lng) {
+      const savedMarker = L.marker([lat, lng], {
+        icon: L.divIcon({
+          html: '<i class="fas fa-map-pin fa-2x" style="color: #9c27b0;"></i>',
+          className: 'saved-location-marker',
+          iconSize: [30, 30],
+          iconAnchor: [15, 30]
+        })
+      }).addTo(map);
+      
+      savedMarker.bindPopup(`Ubicación guardada: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+      savedLocationMarkers.push(savedMarker);
+    }
+    
+    // Function to load saved locations from localStorage
+    function loadSavedLocations() {
+      const savedLocations = JSON.parse(localStorage.getItem('savedPlantingLocations') || '[]');
+      
+      // Clear existing saved location markers
+      savedLocationMarkers.forEach(marker => map.removeLayer(marker));
+      savedLocationMarkers = [];
+      
+      // Add markers for each saved location
+      savedLocations.forEach(location => {
+        addSavedLocationMarker(location.lat, location.lng);
+      });
+      
+      // Update UI list
+      displaySavedLocations();
+    }
+    
+    // Add event listener for save location button
+    document.getElementById('save-location-btn').addEventListener('click', saveLocation);
+    
+    // Initialize everything
+    function init() {
+      // Fetch national data for all layers on startup
+      fetchNationalData().then(() => {
+        initializeLayers();
+        
+        // Add all base layers to the map immediately
+        updateLayer();
+        
+        // Add soil and moisture layers at startup but keep them hidden
+        // until user toggles them on
+        map.addLayer(soilLayer);
+        map.addLayer(moistureLayer);
+        map.removeLayer(soilLayer);
+        map.removeLayer(moistureLayer);
+        
+        setupLocalStorage();
+        updateOnlineStatus();
+        
+        // Load any saved locations from localStorage
+        loadSavedLocations();
+        
+        // Hide loading overlay after initialization
+        document.getElementById('loading-overlay').style.display = 'none';
+      }).catch(error => {
+        console.error("Error loading national data:", error);
+        // Still initialize but with limited functionality
+        initializeLayers();
+        updateLayer();
+        setupLocalStorage();
+        updateOnlineStatus();
+        loadSavedLocations();
+        document.getElementById('loading-overlay').style.display = 'none';
+      });
+    }
+    
+    // Start the app
+    init();
+  </script>
 </body>
 </html>

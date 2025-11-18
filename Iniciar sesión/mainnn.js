@@ -102,7 +102,7 @@ const LoginUser = async (e) => {
             sessionStorage.setItem('user-credential', JSON.stringify(credentials.user));
 
             // Redirigir a la página si las credenciales son correctas
-            if (credentials.user.email === 'leonelsaballos999@gmail.com') {
+            if (credentials.user.email === 'leonelsaballos459@gmail.com') {
                 window.location.href = './administrador.html'; // Redirigir al administrador
             } else {
                 window.location.href = './panel_agricola.html'; // Redirigir a la página normal del panel
@@ -142,7 +142,7 @@ const signInWithGoogle = async () => {
         sessionStorage.setItem('user-credential', JSON.stringify(user));
 
         // Redirigir a la página después de iniciar sesión
-        if (user.email === 'leonelsaballos999@gmail.com') {
+        if (user.email === 'leonelsaballos459@gmail.com') {
             window.location.href = './administrador.html'; // Redirigir al administrador
         } else {
             window.location.href = './panel_agricola.html'; // Redirigir a la página normal del panel
