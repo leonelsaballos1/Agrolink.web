@@ -11,6 +11,21 @@ loginButton.addEventListener("click", () => {
   container.classList.remove("right-panel-active");
 });
 
+// Mobile Animations
+const mobileRegisterLink = document.getElementById("mobileRegisterLink");
+const mobileLoginLink = document.getElementById("mobileLoginLink");
+
+if (mobileRegisterLink && mobileLoginLink) {
+  mobileRegisterLink.addEventListener("click", () => {
+    container.classList.add("right-panel-active");
+  });
+
+  mobileLoginLink.addEventListener("click", () => {
+    container.classList.remove("right-panel-active");
+  });
+}
+
+
 
 // Verificar error de registro
 const form = document.querySelector('form')

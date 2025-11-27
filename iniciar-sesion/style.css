@@ -1,4 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap');
 
 * {
   /* margin: 0;
@@ -384,3 +385,155 @@ input {
 .social-container a:hover {
   border: 1px solid #4bb6b7;
 }
+
+.mobile-switch {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  body {
+    background-color: #fdfdfd; /* Off-white paper color */
+    background-image: linear-gradient(rgba(200,200,200,0.5) 1px, transparent 1px);
+    background-size: 100% 2.5em; /* Match line height */
+    line-height: 2.5em;
+    font-family: 'Nanum Pen Script', cursive;
+    font-size: 1.2rem;
+    color: #222;
+    overflow: auto;
+    height: auto;
+  }
+
+  .container {
+    width: 100%;
+    min-height: 100vh;
+    height: auto;
+    border-radius: 0;
+    box-shadow: none;
+    background-color: transparent; /* Container should be transparent */
+    position: relative;
+    padding-top: 3em; /* Space for the top margin */
+  }
+
+  /* Red margin line */
+  .container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 35px; /* Position the red line */
+    width: 1px;
+    height: 100%;
+    background-color: rgba(255, 100, 100, 0.6);
+  }
+
+  form {
+    background-color: transparent; /* No form background */
+    padding: 0 20px 0 50px; /* Space around the red line */
+    justify-content: flex-start;
+    width: 100%;
+  }
+  
+  h1 {
+    font-size: 3rem;
+    font-weight: bold;
+    color: #111;
+    line-height: 1.2;
+  }
+
+  input, .content label, .content a {
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(0,0,0,0.2);
+    font-family: 'Nanum Pen Script', cursive;
+    font-size: 1.6rem;
+    padding: 8px 0;
+    color: #333;
+  }
+  
+  .content {
+      height: auto;
+      flex-wrap: wrap;
+  }
+  
+  .content input {
+    width: auto;
+    border-bottom: none;
+  }
+  
+  input:focus {
+    outline: none;
+    border-bottom: 2px solid #4bb6b7;
+  }
+  
+  small {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.8rem;
+      color: red !important;
+  }
+
+  button {
+    font-family: 'Nanum Pen Script', cursive;
+    font-size: 1.8rem;
+    border: 1px solid #333;
+    background-color: #333;
+    color: #fff;
+    border-radius: 5px;
+    padding: 8px 25px;
+    margin: 25px 0;
+  }
+  
+  .overlay-container {
+    display: none;
+  }
+  
+  .mobile-switch {
+    display: block;
+    font-family: 'Poppins', sans-serif; /* Use a more readable font for this */
+    margin-top: 20px;
+  }
+  
+  .mobile-switch p {
+    font-size: 1rem;
+    margin: 15px 0;
+  }
+  
+  .mobile-switch a {
+    font-weight: bold;
+    color: #007bff;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  .form-container {
+    position: relative;
+    width: 100%;
+    left: 0 !important;
+    transform: none !important;
+    opacity: 1 !important;
+    z-index: 1;
+    height: auto;
+    min-height: auto;
+    padding: 0;
+  }
+  
+  .container:not(.right-panel-active) .register-container {
+    display: none;
+  }
+
+  .container.right-panel-active .login-container {
+    display: none;
+  }
+  
+  .container.right-panel-active .register-container {
+    display: flex;
+    animation: none;
+  }
+
+  .social-container {
+      margin-top: 15px;
+  }
+  
+  span {
+    font-family: 'Poppins', sans-serif;
+  }
+}
+
