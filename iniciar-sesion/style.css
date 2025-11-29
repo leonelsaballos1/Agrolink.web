@@ -256,10 +256,9 @@ a.social:hover {
   transform: translateY(-2px);
 }
 
-a.social svg {
-  width: 30px; /* Increased size of SVG */
-  height: 30px; /* Increased size of SVG */
-  flex-shrink: 0; /* Prevent SVG from shrinking */
+a.social i {
+  font-size: 30px; /* Matched previous SVG size */
+  flex-shrink: 0;
 }
 
 
