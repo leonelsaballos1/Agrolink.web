@@ -233,16 +233,16 @@ input {
 
 a.social {
   color: #333;
-  font-size: 14px;
+  font-size: 16px; /* Increased font size */
   text-decoration: none;
   margin: 15px 0;
   border: 1px solid #ddd;
   border-radius: 15px;
-  padding: 12px 30px;
+  padding: 15px 40px; /* Increased padding */
   display: flex; /* Use flexbox for alignment */
   align-items: center; /* Center items vertically */
   justify-content: center; /* Center items horizontally */
-  gap: 10px;
+  gap: 12px; /* Adjusted gap */
   transition: all 0.3s ease-in-out;
   box-shadow: 0 4px 8px rgba(0,0,0,0.1);
   background-color: #fff; /* Ensure white background for the button */
@@ -257,8 +257,8 @@ a.social:hover {
 }
 
 a.social svg {
-  width: 20px; /* Adjust size of SVG */
-  height: 20px; /* Adjust size of SVG */
+  width: 24px; /* Increased size of SVG */
+  height: 24px; /* Increased size of SVG */
   flex-shrink: 0; /* Prevent SVG from shrinking */
 }
 
