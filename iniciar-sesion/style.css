@@ -239,8 +239,9 @@ a.social {
   border: 1px solid #ddd;
   border-radius: 15px;
   padding: 12px 30px;
-  display: inline-flex;
-  align-items: center;
+  display: flex; /* Use flexbox for alignment */
+  align-items: center; /* Center items vertically */
+  justify-content: center; /* Center items horizontally */
   gap: 10px;
   transition: all 0.3s ease-in-out;
   box-shadow: 0 4px 8px rgba(0,0,0,0.1);
@@ -248,8 +249,8 @@ a.social {
 }
 
 a.social:hover {
-  color: #fff;
-  background-color: #4285F4;
+  color: #fff; /* Text color on hover */
+  background-color: #4285F4; /* Google Blue on hover */
   border-color: #4285F4;
   box-shadow: 0 6px 12px rgba(0,0,0,0.2);
   transform: translateY(-2px);
@@ -258,7 +259,7 @@ a.social:hover {
 a.social svg {
   width: 20px; /* Adjust size of SVG */
   height: 20px; /* Adjust size of SVG */
-  vertical-align: middle;
+  flex-shrink: 0; /* Prevent SVG from shrinking */
 }
 
 
