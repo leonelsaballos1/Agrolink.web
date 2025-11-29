@@ -249,10 +249,10 @@ a.social {
 }
 
 a.social:hover {
-  color: #fff; /* Text color on hover */
-  background-color: #4285F4; /* Google Blue on hover */
-  border-color: #4285F4;
-  box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+  color: #333; /* Keep text color dark on hover */
+  background-color: #fff; /* Keep background white on hover */
+  border-color: #ccc; /* Subtle border change */
+  box-shadow: 0 8px 16px rgba(0,0,0,0.2); /* More pronounced shadow */
   transform: translateY(-2px);
 }
 
