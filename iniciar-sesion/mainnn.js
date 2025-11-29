@@ -78,44 +78,7 @@ const RegisterUser = async (e) => {
 // Evento de envío del formulario de registro
 registerForm.addEventListener('submit', RegisterUser);
 
-// Elementos del formulario de inicio de sesión
-let emailLogin = document.getElementById('emailLogin');
-let passwordLogin = document.getElementById('passwordLogin');
-let FormLogin = document.getElementById('loginForm');
 
-// Función para iniciar sesión
-const LoginUser = async (e) => {
-    e.preventDefault();
-    try {
-        const credentials = await signInWithEmailAndPassword(auth, emailLogin.value, passwordLogin.value);
-
-        // Consultar Firestore para obtener los datos del usuario
-        const userQuery = query(collection(db, 'users'), where('uid', '==', credentials.user.uid));
-        const querySnapshot = await getDocs(userQuery);
-
-        if (!querySnapshot.empty) {
-            const userData = querySnapshot.docs[0].data();
-            console.log('Todo bien');
-
-            // Guardar datos en sessionStorage
-            sessionStorage.setItem('info-user', JSON.stringify({ firstname: userData.firstname }));
-            sessionStorage.setItem('user-credential', JSON.stringify(credentials.user));
-
-            // Redirigir a la página si las credenciales son correctas
-            if (credentials.user.email === 'leonelsaballos459@gmail.com') {
-                window.location.href = './administrador.html'; // Redirigir al administrador
-            } else {
-                window.location.href = './panel_agricola.html'; // Redirigir a la página normal del panel
-            }
-            console.log('Redirigiendo página...');
-        }
-    } catch (error) {
-        alert(error.message);
-    }
-};
-
-// Evento de envío del formulario de inicio de sesión
-FormLogin.addEventListener('submit', LoginUser);
 
 // Función para iniciar sesión con Google
 const signInWithGoogle = async () => {
