@@ -22,61 +22,7 @@ const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Obtener elementos del DOM
-let Nuser = document.getElementById('username');
-let registerEmail = document.getElementById('email');
-let registerPassword = document.getElementById('password');
-let registerForm = document.getElementById('formRegister');
 
-// Función para registrar un usuario
-const RegisterUser = async (e) => {
-    e.preventDefault();
-
-    // Limpiar errores anteriores
-    document.getElementById('username-error').textContent = "";
-    document.getElementById('email-error').textContent = "";
-    document.getElementById('password-error').textContent = "";
-
-    try {
-        // Verificar si el nombre de usuario ya existe
-        const usernameQuery = query(collection(db, 'users'), where('firstname', '==', Nuser.value));
-        const usernameSnapshot = await getDocs(usernameQuery);
-
-        if (!usernameSnapshot.empty) {
-            document.getElementById('username-error').textContent = "Este nombre de usuario ya está en uso.";
-            return; // Detener el registro
-        }
-
-        const credentials = await createUserWithEmailAndPassword(auth, registerEmail.value, registerPassword.value);
-
-        // Agregar el usuario a Firestore
-        await addDoc(collection(db, 'users'), {
-            uid: credentials.user.uid,
-            firstname: Nuser.value,
-            email: registerEmail.value // Guardar también el email
-        });
-
-        console.log(credentials);
-        // Reiniciar el formulario después del registro exitoso
-        registerForm.reset();
-        alert('¡Registro exitoso!');
-
-    } catch (error) {
-        // Manejo de errores en la interfaz de usuario
-        if (error.code === 'auth/invalid-email') {
-            document.getElementById('email-error').textContent = "Correo electrónico no válido.";
-        } else if (error.code === 'auth/weak-password') {
-            document.getElementById('password-error').textContent = "La contraseña debe tener al menos 6 caracteres.";
-        } else if (error.code === 'auth/email-already-in-use') {
-            document.getElementById('email-error').textContent = "Este correo electrónico ya está registrado.";
-        } else {
-            alert(error.message); // Manejo de otros errores
-        }
-    }
-};
-
-// Evento de envío del formulario de registro
-registerForm.addEventListener('submit', RegisterUser);
 
 
 
@@ -117,11 +63,6 @@ const signInWithGoogle = async () => {
     }
 };
 
-// Asignar el evento de clic al enlace de Google en el registro
-document.getElementById('googleLogin').addEventListener('click', (e) => {
-    e.preventDefault(); // Evitar el comportamiento por defecto del enlace
-    signInWithGoogle();
-});
 
 // Asignar el evento de clic al enlace de Google en el inicio de sesión
 document.getElementById('googleLoginLogin').addEventListener('click', (e) => {
