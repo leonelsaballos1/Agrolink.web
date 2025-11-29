@@ -223,6 +223,14 @@ input {
 
 
 
+.login-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%; /* Ensure it takes full height to center content vertically */
+}
+
 a.social {
   color: #333;
   font-size: 14px;
@@ -236,6 +244,7 @@ a.social {
   gap: 10px;
   transition: all 0.3s ease-in-out;
   box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  background-color: #fff; /* Ensure white background for the button */
 }
 
 a.social:hover {
@@ -246,9 +255,12 @@ a.social:hover {
   transform: translateY(-2px);
 }
 
-a.social i {
-  font-size: 20px;
+a.social svg {
+  width: 20px; /* Adjust size of SVG */
+  height: 20px; /* Adjust size of SVG */
+  vertical-align: middle;
 }
+
 
 
 .mobile-switch {
