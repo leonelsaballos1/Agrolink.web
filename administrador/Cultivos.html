@@ -76,23 +76,34 @@
 
     function mostrarTabla(datos) {
       const tabla = document.getElementById("tabla");
-      tabla.innerHTML = "";
-
-      datos.forEach((d, i) => {
-        const div = document.createElement("div");
-        div.classList.add("item");
-        div.innerHTML = `
-          <h3>👨‍🌾 Agricultor #${i + 1}</h3>
-          <p><b>Nombre:</b> ${d.agricultor || "Sin nombre"}</p>
-          <p><b>Planta:</b> ${d.planta || "Sin planta"}</p>
-          <p><b>Variedad:</b> ${d.variedad || "Sin variedad"}</p>
-          <p><b>Día de sombra:</b> ${d.diaSombra || "No registrado"}</p>
-          <p><b>Día de corte:</b> ${d.diaCorte || "No calculado"}</p>
-          <p><b>Recomendaciones:</b> ${d.recomendaciones || "No asignadas"}</p>
-          <hr>
-        `;
-        tabla.appendChild(div);
-      });
+      tabla.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nombre</th>
+              <th>Planta</th>
+              <th>Variedad</th>
+              <th>Día de Sombra</th>
+              <th>Día de Corte</th>
+              <th>Recomendaciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${datos.map((d, i) => `
+              <tr>
+                <td>${i + 1}</td>
+                <td>${d.agricultor || "Sin nombre"}</td>
+                <td>${d.planta || "Sin planta"}</td>
+                <td>${d.variedad || "Sin variedad"}</td>
+                <td>${d.diaSombra || "No registrado"}</td>
+                <td>${d.diaCorte || "No calculado"}</td>
+                <td>${d.recomendaciones || "No asignadas"}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
     }
 
     cargarDatos();
@@ -123,41 +134,51 @@
     }
 
     #tabla {
-      max-width: 700px;
+      max-width: 1000px;
       margin: 0 auto;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
       background: #fafafa;
-      padding: 20px;
-      border-radius: 20px;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      border-radius: 10px;
+      overflow: hidden;
     }
 
-    .item {
-      margin-bottom: 20px;
-      padding-bottom: 10px;
+    th, td {
+      padding: 12px 15px;
+      text-align: center;
+      border-bottom: 1px solid #ddd;
     }
 
-    .item h3 {
-      color: #4caf50;
-      margin-bottom: 8px;
+    th {
+      background-color: #4caf50;
+      color: #fff;
+      font-weight: bold;
     }
 
-    hr {
-      border: 0;
-      border-top: 1px solid #ddd;
-      margin: 10px 0;
+    tr:nth-child(even) {
+      background-color: #f3f3f3;
     }
 
-    p {
-      margin: 5px 0;
+    tr:hover {
+      background-color: #e0f2f1;
     }
 
-    b {
-      color: #555;
+    button {
+      padding: 10px 20px;
+      font-size: 24px;
+      cursor: pointer;
+      border: none;
+      background: none;
     }
   </style>
 </head>
 <body>
-  <button onclick="history.back()" style="padding: 10px 20px; font-size: 24px; cursor: pointer; border: none; background: none;">&#x2B05;</button>
+  <button onclick="history.back()">&#x2B05;</button>
   <h1>🌾 Dashboard de Agricultores</h1>
   <canvas id="grafica" width="400" height="400"></canvas>
   <div id="tabla"></div>
