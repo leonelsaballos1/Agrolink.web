@@ -48,6 +48,7 @@ const signInWithGoogle = async () => {
         console.log('Usuario autenticado con Google:', user);
         // Guardar datos en sessionStorage
         sessionStorage.setItem('info-user', JSON.stringify({ firstname: user.displayName }));
+        sessionStorage.setItem('user-email', user.email);
         sessionStorage.setItem('user-credential', JSON.stringify(user));
 
         // Redirigir a la página después de iniciar sesión

@@ -140,11 +140,11 @@
             <td>${estado}</td>
             <td>
               <div class="action-buttons">
-                <button class="btn" data-id="${u.id}" onclick="eliminarUsuario('${u.id}')">🗑 Eliminar</button>
-                <button class="btn" data-id="${u.id}" onclick="toggleBloqueo('${u.id}', ${u.blocked})">
+                <button class="btn btn-eliminar" data-id="${u.id}">🗑 Eliminar</button>
+                <button class="btn btn-bloquear" data-id="${u.id}" data-blocked="${u.blocked}">
                   ${u.blocked ? "🔓 Desbloquear" : "🔒 Bloquear"}
                 </button>
-                <button class="btn" data-id="${u.id}" onclick="toggleDenegacion('${u.id}', ${u.denied})">
+                <button class="btn btn-denegar" data-id="${u.id}" data-denied="${u.denied}">
                   ${u.denied ? "✅ Permitir" : "🚫 Negar acceso"}
                 </button>
               </div>
@@ -155,132 +155,150 @@
 
       html += `</tbody></table>`;
       tabla.innerHTML = html;
+
+      // 🔹 Agregar eventos a los botones
+      tabla.querySelectorAll(".btn-eliminar").forEach(btn => {
+        btn.addEventListener("click", () => eliminarUsuario(btn.getAttribute("data-id")));
+      });
+
+      tabla.querySelectorAll(".btn-bloquear").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-id");
+          const isBlocked = btn.getAttribute("data-blocked") === "true";
+          toggleBloqueo(id, isBlocked);
+        });
+      });
+
+      tabla.querySelectorAll(".btn-denegar").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-id");
+          const isDenied = btn.getAttribute("data-denied") === "true";
+          toggleDenegacion(id, isDenied);
+        });
+      });
     }
 
-    // 🔹 Eliminar usuario
-    async function eliminarUsuario(id) {
+    // 🔹 Funciones globales
+    window.eliminarUsuario = async function(id) {
       if (!confirm("¿Seguro que deseas eliminar este usuario?")) return;
       await deleteDoc(doc(db, "usuarios", id));
       cargarDatos();
-    }
+    };
 
-    // 🔹 Bloquear / Desbloquear
-    async function toggleBloqueo(id, isBlocked) {
+    window.toggleBloqueo = async function(id, isBlocked) {
       await updateDoc(doc(db, "usuarios", id), { blocked: !isBlocked });
       cargarDatos();
-    }
+    };
 
-    // 🔹 Negar / permitir acceso
-    async function toggleDenegacion(id, isDenied) {
+    window.toggleDenegacion = async function(id, isDenied) {
       await updateDoc(doc(db, "usuarios", id), { denied: !isDenied });
       cargarDatos();
-    }
+    };
 
     window.addEventListener("load", cargarDatos);
   </script>
 
-<style>
-/* 🔹 Estilos generales */
-body {
-  font-family: "Segoe UI";
-  background: #fff;
-  color: #111;
-  padding: 20px;
-}
+  <style>
+    /* 🔹 Estilos generales */
+    body {
+      font-family: "Segoe UI";
+      background: #fff;
+      color: #111;
+      padding: 20px;
+    }
 
-h1 {
-  color: #4CAF50;
-  text-align: center;
-}
+    h1 {
+      color: #4CAF50;
+      text-align: center;
+    }
 
-/* 🔹 Cuadro tabla */
-.table-box {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-  background: white;
-  border: 2px solid #4CAF50;
-  border-radius: 12px;
-  overflow: hidden;
-}
+    /* 🔹 Cuadro tabla */
+    .table-box {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+      border: 2px solid #4CAF50;
+      border-radius: 12px;
+      overflow: hidden;
+    }
 
-.table-box th {
-  background: #4CAF50;
-  color: rgb(0, 0, 0);
-  padding: 12px;
-  font-size: 16px;
-}
+    .table-box th {
+      background: #4CAF50;
+      color: rgb(0, 0, 0);
+      padding: 12px;
+      font-size: 16px;
+    }
 
-.table-box td {
-  padding: 12px;
-  border-bottom: 1px solid #ddd;
-}
+    .table-box td {
+      padding: 12px;
+      border-bottom: 1px solid #ddd;
+    }
 
-.table-box tr:hover {
-  background: #f1f8f1;
-}
+    .table-box tr:hover {
+      background: #f1f8f1;
+    }
 
-/* 🔹 Botones verdes tiernos */
-.btn {
-  background: #8EE485;
-  color: #000000;
-  padding: 8px 12px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: 0.3s;
-}
+    /* 🔹 Botones verdes tiernos */
+    .btn {
+      background: #8EE485;
+      color: #000000;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.3s;
+    }
 
-.btn:hover {
-  background: #6CCF62;
-  transform: scale(1.05);
-}
+    .btn:hover {
+      background: #6CCF62;
+      transform: scale(1.05);
+    }
 
-.action-buttons {
-  display: flex;
-  gap: 8px;
-}
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+    }
 
-/* 🔹 Formulario */
-#formAgregar {
-  max-width: 700px;
-  margin: 20px auto;
-  background: #f2f2f2;
-  padding: 20px;
-  border-radius: 12px;
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
+    /* 🔹 Formulario */
+    #formAgregar {
+      max-width: 700px;
+      margin: 20px auto;
+      background: #f2f2f2;
+      padding: 20px;
+      border-radius: 12px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
 
-#formAgregar input {
-  flex: 1;
-  min-width: 150px;
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-}
+    #formAgregar input {
+      flex: 1;
+      min-width: 150px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
 
-#formAgregar button {
-  background: #4CAF50;
-  color: white;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-}
+    #formAgregar button {
+      background: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
 
-canvas {
-  display: block;
-  margin: 0 auto;
-  max-width: 700px;
-  background: #fafafa;
-  padding: 10px;
-  border-radius: 12px;
-}
-</style>
-
+    canvas {
+      display: block;
+      margin: 0 auto;
+      max-width: 700px;
+      background: #fafafa;
+      padding: 10px;
+      border-radius: 12px;
+    }
+  </style>
 </head>
 
 <body>
